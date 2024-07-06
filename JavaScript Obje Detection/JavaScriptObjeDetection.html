@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nesne Tespiti - COCO-SSD ile Türkçe Etiketler</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f0f0f0;
+    }
+    #videoContainer {
+      position: relative;
+      max-width: 100%;
+      max-height: 100%;
+    }
+    #videoElement {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    #overlayCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="videoContainer">
+    <video id="videoElement" autoplay playsinline></video>
+    <canvas id="overlayCanvas"></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+  <script>
+    async function detectObjects() {
+      const videoElement = document.getElementById('videoElement');
+      const canvasElement = document.getElementById('overlayCanvas');
+      const canvasContext = canvasElement.getContext('2d');
+
+      // COCO-SSD modelini yükle
+      const model = await cocoSsd.load();
+
+      // Türkçe etiketler için çeviri tablosu
+      const labelMap = {
+        'person': 'insan',
+        'bicycle': 'bisiklet',
+        'car': 'araba',
+        'motorcycle': 'motosiklet',
+        'airplane': 'uçak',
+        'bus': 'otobüs',
+        'train': 'tren',
+        'truck': 'kamyonet',
+        'boat': 'tekne',
+        'traffic light': 'trafik lambası',
+        'fire hydrant': 'yangın musluğu',
+        'stop sign': 'dur işareti',
+        'parking meter': 'parkmetre',
+        'bench': 'bank',
+        'bird': 'kuş',
+        'cat': 'kedi',
+        'dog': 'köpek',
+        'horse': 'at',
+        'sheep': 'koyun',
+        'cow': 'inek',
+        'elephant': 'fil',
+        'bear': 'ayı',
+        'zebra': 'zebra',
+        'giraffe': 'zürafa',
+        'backpack': 'sırt çantası',
+        'umbrella': 'şemsiye',
+        'handbag': 'el çantası',
+        'tie': 'kravat',
+        'suitcase': 'bavul',
+        'frisbee': 'frizbi',
+        'skis': 'kayak',
+        'snowboard': 'snowboard',
+        'sports ball': 'spor topu',
+        'kite': 'uçurtma',
+        'baseball bat': 'beyzbol sopası',
+        'baseball glove': 'beyzbol eldiveni',
+        'skateboard': 'kaykay',
+        'surfboard': 'sörf tahtası',
+        'tennis racket': 'tenis raketi',
+        'bottle': 'şişe',
+        'wine glass': 'şarap bardağı',
+        'cup': 'bardak',
+        'fork': 'çatal',
+        'knife': 'bıçak',
+        'spoon': 'kaşık',
+        'bowl': 'kase',
+        'banana': 'muz',
+        'apple': 'elma',
+        'sandwich': 'sandviç',
+        'orange': 'portakal',
+        'broccoli': 'brokoli',
+        'carrot': 'havuç',
+        'hot dog': 'sosisli sandviç',
+        'pizza': 'pizza',
+        'donut': 'doughnut',
+        'cake': 'pasta',
+        'chair': 'sandalye',
+        'couch': 'kanepe',
+        'potted plant': 'saksı bitkisi',
+        'bed': 'yatak',
+        'dining table': 'yemek masası',
+        'toilet': 'tuvalet',
+        'tv': 'televizyon',
+        'laptop': 'dizüstü bilgisayar',
+        'mouse': 'fare',
+        'remote': 'uzaktan kumanda',
+        'keyboard': 'klavye',
+        'cell phone': 'cep telefonu',
+        'microwave': 'mikrodalga fırın',
+        'oven': 'fırın',
+        'toaster': 'tost makinesi',
+        'sink': 'lavabo',
+        'refrigerator': 'buzdolabı',
+        'book': 'kitap',
+        'clock': 'saat',
+        'vase': 'vazo',
+        'scissors': 'makas',
+        'teddy bear': 'ayı peluş',
+        'hair drier': 'saç kurutma makinesi',
+        'toothbrush': 'diş fırçası'
+      };
+
+      function detectFrame() {
+        // Video akışından nesne tespiti yap
+        model.detect(videoElement).then(predictions => {
+          // Canvas'i temizle
+          canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
+          
+          // Video görüntüsünü canvas üzerine çiz
+          canvasContext.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+          
+          // Her bir tahmin için etiket ve sınırlayıcı kutu çiz
+          predictions.forEach(prediction => {
+            const [x, y, width, height] = prediction.bbox;
+            canvasContext.beginPath();
+            canvasContext.rect(x, y, width, height);
+            canvasContext.lineWidth = 2;
+            canvasContext.strokeStyle = 'red';
+            canvasContext.stroke();
+            
+            // Etiketlerin Türkçe karşılıklarını ekle
+            const label = prediction.class.toLowerCase();
+            const turkishLabel = labelMap[label] || label; // Türkçe karşılık varsa kullan, yoksa İngilizce kullan
+            canvasContext.fillStyle = 'red';
+            canvasContext.font = '16px Arial';
+            canvasContext.fillText(turkishLabel, x, y - 5);
+          });
+
+          // Yeniden frame tespitini çağır
+          requestAnimationFrame(detectFrame);
+        }).catch(error => {
+          console.error('Nesne tespiti hatası:', error);
+          requestAnimationFrame(detectFrame); // Hata oluşursa da devam et
+        });
+      }
+
+      // Arka kamerayı kullanarak video akışını başlat
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function(stream) {
+          videoElement.srcObject = stream;
+          videoElement.play();
+          videoElement.onloadedmetadata = function() {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            detectFrame(); // Nesne tespitini başlat
+          };
+        })
+        .catch(function(err) {
+          console.error('Kamera erişim hatası: ', err);
+        });
+    }
+
+    // Sayfa yüklendiğinde nesne tespitini başlat
+    window.onload = detectObjects;
+  </script>
+</body>
+</html>
